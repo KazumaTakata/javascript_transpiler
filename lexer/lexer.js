@@ -8,6 +8,10 @@ let lex = function(input) {
     return /[()]/.test(c);
   };
 
+  let isKeyword = function(c) {
+    return ["let", "if", "else"].includes(c);
+  };
+
   let isDigit = function(c) {
     return /[0-9]/.test(c);
   };
@@ -51,7 +55,11 @@ let lex = function(input) {
     } else if (isIdentifier(c)) {
       let idn = c;
       while (isIdentifier(advance())) idn += c;
-      addToken("identifier", idn);
+      if (isKeyword(idn)) {
+        addToken("keyword", idn);
+      } else {
+        addToken("identifier", idn);
+      }
     } else throw "Unrecognized token.";
   }
 

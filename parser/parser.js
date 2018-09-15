@@ -1,7 +1,8 @@
 let generator = function(tokens, index) {
   let parsedobj = null;
-
-  for (let i = index; i < tokens.length; i++) {
+  let expectedtype = null;
+  let i;
+  for (i = index; i < tokens.length; i++) {
     if (tokens[i].type == "bracket") {
       if (tokens[i].value === ")") {
         return [parsedobj, i];
@@ -14,10 +15,35 @@ let generator = function(tokens, index) {
         parsedobj = generateUnit(nestedobj, parsedobj);
       }
     } else {
-      parsedobj = generateUnit(tokens[i], parsedobj);
+      if (expectedtype != null) {
+        if (tokens[i].type === expectedtype) {
+          expectedtype = null;
+          let returnobj = generateUnit(tokens[i], parsedobj);
+          parsedobj = returnobj;
+        } else {
+          let e = new Error("not matched");
+          throw e;
+        }
+      } else {
+        let returnobj = generateUnit(tokens[i], parsedobj);
+        if (Array.isArray(returnobj)) {
+          expectedtype = returnobj[1];
+          parsedobj = returnobj[0];
+        } else {
+          parsedobj = returnobj;
+
+          if (parsedobj.type == "=") {
+            let returnobj = generator(tokens, i + 1);
+            let nestedobj = returnobj[0];
+            let currindex = returnobj[1];
+            i = currindex;
+            parsedobj.right = nestedobj;
+          }
+        }
+      }
     }
   }
-  return parsedobj;
+  return [parsedobj, i];
 };
 
 function generateUnit(token, prev) {
@@ -31,6 +57,17 @@ function generateUnit(token, prev) {
         return prev;
       } else {
         return { type: "number", value: token.value };
+      }
+    }
+
+    if (token.type == "keyword") {
+      let obj = { type: "keyword", value: token.value, body: null };
+      return [obj, "identifier"];
+    }
+
+    if (token.type == "identifier") {
+      if (prev) {
+        return { type: "identifier", name: token.value };
       }
     }
 
@@ -50,7 +87,7 @@ function generateUnit(token, prev) {
 function parser(tokens) {
   let index = 0;
   let parsedobj = generator(tokens, index);
-  return parsedobj;
+  return parsedobj[0];
 }
 
 exports.parser = parser;
